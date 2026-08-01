@@ -1,6 +1,5 @@
 import os
 import sqlite3
-import certifi
 from flask import Flask, render_template, request, redirect, url_for, jsonify, g
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
