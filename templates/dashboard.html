@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Expense Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0e17;
+    --glass: rgba(255,255,255,0.045);
+    --glass-border: rgba(255,255,255,0.09);
+    --glass-hi: rgba(255,255,255,0.09);
+    --text: #eef1f7;
+    --muted: #8a93a6;
+    --teal: #5eead4;
+    --violet: #a78bfa;
+    --amber: #fbbf24;
+    --danger: #f87171;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
+  }
+
+  .ambient { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+  .blob { position: absolute; border-radius: 50%; filter: blur(70px); opacity: 0.3; will-change: transform; }
+  .blob-1 { width: 460px; height: 460px; background: radial-gradient(circle, var(--teal), transparent 70%); top: -140px; left: -100px; animation: drift1 24s ease-in-out infinite; }
+  .blob-2 { width: 500px; height: 500px; background: radial-gradient(circle, var(--violet), transparent 70%); bottom: -180px; right: -120px; animation: drift2 28s ease-in-out infinite; }
+  @keyframes drift1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(50px,70px) scale(1.12); } }
+  @keyframes drift2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-60px,-40px) scale(1.08); } }
+
+  .container { position: relative; z-index: 2; max-width: 960px; margin: 0 auto; padding: 48px 24px 80px; }
+
+  .brand { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 6px; }
+  .logo-mark { width: 32px; height: 32px; }
+  .logo-mark svg { width: 100%; height: 100%; display: block; }
+  .brand-name { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 19px; }
+  .brand-name span { color: var(--teal); }
+
+  header { text-align: center; margin-bottom: 28px; }
+  header h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: clamp(24px, 4vw, 30px);
+    margin: 4px 0 0;
+    letter-spacing: -0.02em;
+  }
+
+  nav.tabs { display: flex; justify-content: center; gap: 6px; margin-bottom: 36px; }
+  nav.tabs a { color: var(--muted); text-decoration: none; font-size: 13.5px; font-weight: 500; padding: 8px 16px; border-radius: 100px; transition: color 0.2s, background 0.2s; }
+  nav.tabs a.active { color: var(--text); background: var(--glass); border: 1px solid var(--glass-border); }
+  nav.tabs a:hover:not(.active) { color: var(--text); }
+  nav.tabs a.logout-link { margin-left: 8px; color: var(--danger); opacity: 0.8; }
+  nav.tabs a.logout-link:hover { opacity: 1; }
+
+  .grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 20px; margin-bottom: 22px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+
+  .glass-card {
+    position: relative;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 24px;
+    backdrop-filter: blur(22px) saturate(140%);
+    -webkit-backdrop-filter: blur(22px) saturate(140%);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 24px 50px -28px rgba(0,0,0,0.55);
+    opacity: 0;
+    animation: riseIn 0.6s cubic-bezier(.2,.8,.2,1) forwards;
+  }
+  .glass-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--glass-hi), transparent);
+  }
+  @keyframes riseIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  .glass-card h3 {
+    margin: 0 0 18px; font-size: 13.5px; color: var(--muted); font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+
+  .stat-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 36px; font-weight: 700;
+    background: linear-gradient(100deg, var(--teal), var(--violet));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .stat-label { color: var(--muted); font-size: 12.5px; margin-top: 6px; }
+  .stat-block { margin-bottom: 22px; }
+  .stat-block:last-child { margin-bottom: 0; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { text-align: left; color: var(--muted); padding: 10px 8px; border-bottom: 1px solid var(--glass-border); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  td { padding: 12px 8px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  tbody tr { transition: background 0.2s; }
+  tbody tr:hover { background: rgba(255,255,255,0.025); }
+
+  .badge { display: inline-block; padding: 3px 11px; border-radius: 100px; background: linear-gradient(100deg, rgba(94,234,212,0.18), rgba(167,139,250,0.18)); color: var(--teal); font-size: 11.5px; font-weight: 600; }
+  .review-badge { background: rgba(251,191,36,0.15); color: var(--amber); }
+
+  .icon-btn {
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    font-size: 12.5px; padding: 4px 8px; border-radius: 8px; transition: color 0.2s, background 0.2s;
+  }
+  .icon-btn:hover { color: var(--danger); background: rgba(248,113,113,0.08); }
+
+  .empty-state { text-align: center; color: var(--muted); padding: 50px 20px; font-size: 13.5px; }
+  .budget-bar-track {
+    width: 100%; height: 10px; border-radius: 100px;
+    background: rgba(255,255,255,0.06); overflow: hidden; margin-top: 14px;
+  }
+  .budget-bar-fill {
+    height: 100%; border-radius: 100px;
+    background: linear-gradient(100deg, var(--teal), var(--violet));
+    transition: width 0.6s cubic-bezier(.2,.8,.2,1), background 0.4s;
+    width: 0%;
+  }
+  .budget-bar-fill.warn { background: linear-gradient(100deg, var(--amber), #f59e0b); }
+  .budget-bar-fill.over { background: linear-gradient(100deg, var(--danger), #dc2626); }
+
+  .budget-row {
+    display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;
+  }
+  .budget-row .income-figure { font-size: 13px; color: var(--muted); }
+  .budget-row .income-figure b { color: var(--text); font-weight: 600; }
+
+  .income-edit { display: flex; gap: 8px; margin-top: 16px; }
+  .income-edit input {
+    flex: 1; background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border);
+    border-radius: 10px; padding: 9px 12px; color: var(--text); font-size: 13.5px;
+    font-family: 'Inter', sans-serif; outline: none; transition: border-color 0.2s;
+  }
+  .income-edit input:focus { border-color: var(--teal); }
+  .income-edit button {
+    background: var(--glass); border: 1px solid var(--glass-border); color: var(--text);
+    border-radius: 10px; padding: 9px 16px; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: border-color 0.2s, color 0.2s; font-family: 'Inter', sans-serif;
+  }
+  .income-edit button:hover { border-color: var(--teal); color: var(--teal); }
+
+  .budget-warning {
+    margin-top: 14px; padding: 10px 14px; border-radius: 10px;
+    background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.25);
+    color: var(--danger); font-size: 12.5px; display: none;
+  }
+  .budget-warning.show { display: block; }
+  .cat-limit-item {
+    padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .cat-limit-item:last-child { border-bottom: none; }
+  .cat-limit-head {
+    display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;
+  }
+  .cat-limit-head .cat-name { font-size: 13.5px; font-weight: 600; }
+  .cat-limit-head .cat-figures { font-size: 12px; color: var(--muted); }
+  .cat-limit-head .cat-figures b { color: var(--text); }
+  .cat-bar-track {
+    width: 100%; height: 7px; border-radius: 100px; background: rgba(255,255,255,0.06); overflow: hidden;
+  }
+  .cat-bar-fill {
+    height: 100%; border-radius: 100px;
+    background: linear-gradient(100deg, var(--teal), var(--violet));
+    transition: width 0.6s cubic-bezier(.2,.8,.2,1);
+  }
+  .cat-bar-fill.warn { background: linear-gradient(100deg, var(--amber), #f59e0b); }
+  .cat-bar-fill.over { background: linear-gradient(100deg, var(--danger), #dc2626); }
+  .cat-no-limit-tag {
+    font-size: 11px; color: var(--muted); font-style: italic;
+  }
+
+  .limit-set-row {
+    display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap;
+  }
+  .limit-set-row select, .limit-set-row input {
+    background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border);
+    border-radius: 10px; padding: 9px 12px; color: var(--text); font-size: 13px;
+    font-family: 'Inter', sans-serif; outline: none; transition: border-color 0.2s;
+  }
+  .limit-set-row select:focus, .limit-set-row input:focus { border-color: var(--teal); }
+  .limit-set-row input { flex: 1; min-width: 120px; }
+  .limit-set-row button {
+    background: var(--glass); border: 1px solid var(--glass-border); color: var(--text);
+    border-radius: 10px; padding: 9px 16px; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: border-color 0.2s, color 0.2s; font-family: 'Inter', sans-serif;
+  }
+  .limit-set-row button:hover { border-color: var(--teal); color: var(--teal); }
+
+  /* ---------- Custom animated dropdown ---------- */
+  .custom-dropdown {
+    position: relative;
+    flex: 1.3;
+    min-width: 180px;
+    font-family: 'Inter', sans-serif;
+    user-select: none;
+  }
+  .dd-trigger {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    padding: 9px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .dd-trigger:hover { border-color: rgba(94,234,212,0.4); }
+  .custom-dropdown.open .dd-trigger {
+    border-color: var(--teal);
+    background: rgba(94,234,212,0.05);
+  }
+  .dd-trigger .dd-current { display: flex; align-items: center; gap: 8px; }
+  .dd-trigger .dd-icon { font-size: 15px; line-height: 1; }
+  .dd-trigger .dd-chevron {
+    width: 14px; height: 14px; flex-shrink: 0;
+    transition: transform 0.3s cubic-bezier(.2,.8,.2,1);
+    color: var(--muted);
+  }
+  .custom-dropdown.open .dd-chevron { transform: rotate(180deg); color: var(--teal); }
+
+  .dd-panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0; right: 0;
+    background: rgba(13,18,28,0.92);
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    box-shadow: 0 20px 40px -20px rgba(0,0,0,0.7);
+    padding: 6px;
+    z-index: 30;
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s cubic-bezier(.2,.8,.2,1);
+    max-height: 280px;
+    overflow-y: auto;
+  }
+  .custom-dropdown.open .dd-panel {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+  }
+  .dd-option {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px;
+    border-radius: 9px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .dd-option:hover { background: rgba(255,255,255,0.06); }
+  .dd-option.selected { background: linear-gradient(100deg, rgba(94,234,212,0.14), rgba(167,139,250,0.14)); }
+  .dd-option .dd-icon { font-size: 15px; }
+  .dd-option .dd-check {
+    margin-left: auto; color: var(--teal); font-size: 13px; opacity: 0;
+  }
+  .dd-option.selected .dd-check { opacity: 1; }
+  .trend-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 13px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .trend-item:last-child { border-bottom: none; }
+  .trend-left .trend-cat { font-size: 13.5px; font-weight: 600; }
+  .trend-left .trend-figures { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .trend-change {
+    font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 700;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .trend-change.up { color: var(--danger); }
+  .trend-change.down { color: var(--teal); }
+  .trend-change.flat { color: var(--muted); }
+  .trend-month-label {
+    text-align: center; font-size: 12px; color: var(--muted); margin-bottom: 14px;
+  }
+</style>
+</head>
+<body>
+
+<div class="ambient">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+</div>
+
+<div class="container">
+  <div class="brand">
+    <div class="logo-mark">
+      <svg viewBox="0 0 40 40" fill="none">
+        <rect x="9" y="5" width="22" height="30" rx="3" stroke="url(#g1)" stroke-width="2"/>
+        <path d="M13 13H27M13 19H27M13 25H21" stroke="url(#g1)" stroke-width="2" stroke-linecap="round"/>
+        <defs>
+          <linearGradient id="g1" x1="9" y1="5" x2="31" y2="35">
+            <stop stop-color="#5eead4"/>
+            <stop offset="1" stop-color="#a78bfa"/>
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+    <div class="brand-name">Expense Tracker<span>.</span></div>
+  </div>
+  <header><h1>Your spending, organized</h1></header>
+
+  <nav class="tabs">
+    <a href="/">Upload</a>
+    <a href="/dashboard" class="active">Dashboard</a>
+    <a href="/gallery">Gallery</a>
+    <a href="/logout" class="logout-link">Logout</a>
+  </nav>
+
+  <div class="glass-card" style="margin-bottom:22px;" id="budgetCard">
+    <h3>Monthly Budget</h3>
+    <div class="budget-row">
+      <span class="income-figure">Spent <b id="budgetSpent">₹0</b> of <b id="budgetIncome">₹0</b></span>
+      <span class="income-figure" id="budgetPercent">0%</span>
+    </div>
+    <div class="budget-bar-track">
+      <div class="budget-bar-fill" id="budgetBarFill"></div>
+    </div>
+    <div class="budget-warning" id="budgetWarning"></div>
+    <div class="income-edit">
+      <input type="number" id="incomeInput" placeholder="Set your monthly income (₹)">
+      <button onclick="saveIncome()">Save</button>
+    </div>
+  </div>
+
+  <div class="glass-card" style="margin-bottom:22px;" id="categoryLimitsCard">
+    <h3>Category Limits</h3>
+    <div id="categoryStatusList"></div>
+    <div class="limit-set-row">
+      <div class="custom-dropdown" id="categoryDropdown">
+        <div class="dd-trigger" onclick="toggleDropdown()">
+          <span class="dd-current">
+            <span class="dd-icon" id="ddCurrentIcon">🍔</span>
+            <span id="ddCurrentLabel">Food & Dining</span>
+          </span>
+          <svg class="dd-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </div>
+        <div class="dd-panel" id="ddPanel"></div>
+      </div>
+      <input type="hidden" id="limitCategorySelect" value="Food & Dining">
+      <input type="number" id="limitAmountInput" placeholder="Limit (₹)">
+      <button onclick="saveCategoryLimit()">Set Limit</button>
+    </div>
+  </div>
+
+  <div class="glass-card" style="margin-bottom:22px;" id="trendCard">
+    <h3>Month-over-Month Trend</h3>
+    <div class="trend-month-label" id="trendMonthLabel"></div>
+    <div id="trendList"></div>
+  </div>
+
+  <div class="grid">
+    <div class="glass-card" style="animation-delay:0.05s">
+      <h3>Spend by Category</h3>
+      <canvas id="categoryChart" height="220"></canvas>
+    </div>
+    <div class="glass-card" style="animation-delay:0.15s">
+      <h3>Overview</h3>
+      <div class="stat-block">
+        <div class="stat-value" id="totalSpend">₹0</div>
+        <div class="stat-label">Total spend across all receipts</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-value" id="totalCount" style="font-size:28px;">0</div>
+        <div class="stat-label">Receipts processed</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="glass-card" style="animation-delay:0.25s">
+    <h3>All Receipts</h3>
+    <div id="tableWrap"></div>
+  </div>
+</div>
+
+<script>
+let chartInstance = null;
+
+// ---------- Category icons (used in dropdown, badges, and trend list) ----------
+const CATEGORY_ICONS = {
+  "Food & Dining": "🍔",
+  "Transport": "🚗",
+  "Groceries": "🍎",
+  "Shopping": "🛍️",
+  "Utilities": "💡",
+  "Healthcare": "🩺",
+  "Entertainment": "🎬",
+  "Uncategorized": "📦"
+};
+function getCategoryIcon(cat) {
+  return CATEGORY_ICONS[cat] || "📦";
+}
+
+// ---------- Custom animated dropdown ----------
+let selectedCategory = "Food & Dining";
+
+function buildDropdownOptions() {
+  const panel = document.getElementById('ddPanel');
+  panel.innerHTML = Object.keys(CATEGORY_ICONS).map(cat => `
+    <div class="dd-option ${cat === selectedCategory ? 'selected' : ''}" onclick="selectCategory('${cat.replace(/'/g, "\\'")}')">
+      <span class="dd-icon">${getCategoryIcon(cat)}</span>
+      <span>${cat}</span>
+      <span class="dd-check">✓</span>
+    </div>
+  `).join('');
+}
+
+function toggleDropdown() {
+  const dd = document.getElementById('categoryDropdown');
+  const isOpen = dd.classList.contains('open');
+  if (isOpen) {
+    dd.classList.remove('open');
+  } else {
+    buildDropdownOptions();
+    dd.classList.add('open');
+  }
+}
+
+function selectCategory(cat) {
+  selectedCategory = cat;
+  document.getElementById('limitCategorySelect').value = cat;
+  document.getElementById('ddCurrentIcon').textContent = getCategoryIcon(cat);
+  document.getElementById('ddCurrentLabel').textContent = cat;
+  document.getElementById('categoryDropdown').classList.remove('open');
+}
+
+document.addEventListener('click', (e) => {
+  const dd = document.getElementById('categoryDropdown');
+  if (dd && !dd.contains(e.target)) {
+    dd.classList.remove('open');
+  }
+});
+
+async function loadSummary() {
+  const res = await fetch('/api/summary');
+  const summary = await res.json();
+
+  const total = summary.reduce((sum, s) => sum + (s.total || 0), 0);
+  const count = summary.reduce((sum, s) => sum + (s.count || 0), 0);
+  document.getElementById('totalSpend').textContent = '₹' + total.toFixed(2);
+  document.getElementById('totalCount').textContent = count;
+
+  const ctx = document.getElementById('categoryChart');
+  if (chartInstance) chartInstance.destroy();
+
+  if (summary.length === 0) {
+    ctx.parentElement.innerHTML = '<h3 style="margin:0 0 18px;font-size:13.5px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:0.06em;">Spend by Category</h3><p class="empty-state">No data yet — upload a receipt first</p>';
+    return;
+  }
+
+  chartInstance = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: summary.map(s => s.category),
+      datasets: [{
+        data: summary.map(s => s.total),
+        backgroundColor: ['#5eead4', '#a78bfa', '#fbbf24', '#f87171', '#60a5fa', '#34d399', '#f472b6'],
+        borderWidth: 0,
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      animation: { animateRotate: true, animateScale: true, duration: 900, easing: 'easeOutQuart' },
+      plugins: { legend: { position: 'bottom', labels: { color: '#8a93a6', font: { size: 11, family: 'Inter' }, padding: 14 } } }
+    }
+  });
+}
+
+async function loadReceipts() {
+  const res = await fetch('/api/receipts');
+  const receipts = await res.json();
+  const wrap = document.getElementById('tableWrap');
+
+  if (receipts.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">No receipts uploaded yet — head to the upload tab to get started</p>';
+    return;
+  }
+
+  let rows = receipts.map(r => `
+    <tr>
+      <td>${r.merchant || '—'}</td>
+      <td>${r.amount != null ? '₹' + r.amount.toFixed(2) : '—'}</td>
+      <td>${r.date || '—'}</td>
+      <td><span class="badge ${r.needs_review ? 'review-badge' : ''}">${getCategoryIcon(r.category)} ${r.category}${r.needs_review ? ' ⚠' : ''}</span></td>
+      <td><button class="icon-btn" onclick="deleteReceipt('${r._id}')">Delete</button></td>
+    </tr>
+  `).join('');
+
+  wrap.innerHTML = `
+    <table>
+      <thead><tr><th>Merchant</th><th>Amount</th><th>Date</th><th>Category</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+async function deleteReceipt(id) {
+  if (!confirm('Delete this receipt?')) return;
+  await fetch(`/api/receipt/${id}`, { method: 'DELETE' });
+  loadSummary();
+  loadReceipts();
+}
+
+async function loadBudget() {
+  const res = await fetch('/api/budget');
+  const budget = await res.json();
+
+  document.getElementById('budgetSpent').textContent = '₹' + budget.total_spent.toFixed(2);
+  document.getElementById('budgetIncome').textContent = '₹' + budget.monthly_income.toFixed(2);
+  document.getElementById('budgetPercent').textContent = budget.percent_used + '%';
+  document.getElementById('incomeInput').value = budget.monthly_income || '';
+
+  const fill = document.getElementById('budgetBarFill');
+  const warning = document.getElementById('budgetWarning');
+  const pct = Math.min(budget.percent_used, 100);
+  fill.style.width = pct + '%';
+
+  fill.classList.remove('warn', 'over');
+  warning.classList.remove('show');
+
+  if (budget.monthly_income > 0 && budget.percent_used >= 100) {
+    fill.classList.add('over');
+    warning.classList.add('show');
+    warning.textContent = `⚠ You've exceeded your monthly budget by ₹${Math.abs(budget.remaining).toFixed(2)}.`;
+  } else if (budget.percent_used >= 80) {
+    fill.classList.add('warn');
+    warning.classList.add('show');
+    warning.textContent = `⚠ You've used ${budget.percent_used}% of your monthly budget — ₹${budget.remaining.toFixed(2)} remaining.`;
+  }
+}
+
+async function saveIncome() {
+  const value = document.getElementById('incomeInput').value;
+  if (!value || isNaN(value)) {
+    alert('Please enter a valid income amount');
+    return;
+  }
+  await fetch('/api/income', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ amount: parseFloat(value) })
+  });
+  loadBudget();
+}
+
+async function loadCategoryStatus() {
+  const res = await fetch('/api/category-status');
+  const statusList = await res.json();
+  const wrap = document.getElementById('categoryStatusList');
+
+  if (statusList.length === 0) {
+    wrap.innerHTML = '<p class="empty-state" style="padding:20px 0;">No spending data yet</p>';
+    return;
+  }
+
+  wrap.innerHTML = statusList.map(item => {
+    const pct = item.percent != null ? Math.min(item.percent, 100) : 0;
+    const barClass = item.status === 'over' ? 'over' : (item.status === 'warn' ? 'warn' : '');
+    const figuresText = item.limit
+      ? `<b>₹${item.spent.toFixed(0)}</b> / ₹${item.limit.toFixed(0)} (${item.percent}%)`
+      : `<b>₹${item.spent.toFixed(0)}</b> spent`;
+    const noLimitTag = !item.limit ? '<span class="cat-no-limit-tag"> no limit set</span>' : '';
+
+    return `
+      <div class="cat-limit-item">
+        <div class="cat-limit-head">
+          <span class="cat-name">${getCategoryIcon(item.category)} ${item.category}${noLimitTag}</span>
+          <span class="cat-figures">${figuresText}</span>
+        </div>
+        <div class="cat-bar-track">
+          <div class="cat-bar-fill ${barClass}" style="width:${item.limit ? pct : 0}%;"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function saveCategoryLimit() {
+  const category = document.getElementById('limitCategorySelect').value;
+  const limit = document.getElementById('limitAmountInput').value;
+
+  if (!limit || isNaN(limit)) {
+    alert('Please enter a valid limit amount');
+    return;
+  }
+
+  await fetch('/api/category-limits', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ category, limit: parseFloat(limit) })
+  });
+
+  document.getElementById('limitAmountInput').value = '';
+  loadCategoryStatus();
+}
+
+async function loadMonthlyComparison() {
+  const res = await fetch('/api/monthly-comparison');
+  const data = await res.json();
+  const list = document.getElementById('trendList');
+  const label = document.getElementById('trendMonthLabel');
+
+  label.textContent = `${data.current_month_label} vs ${data.previous_month_label}`;
+
+  if (data.categories.length === 0) {
+    list.innerHTML = '<p class="empty-state" style="padding:20px 0;">Not enough data yet — keep uploading receipts to see trends</p>';
+    return;
+  }
+
+  list.innerHTML = data.categories.map(item => {
+    const arrow = item.direction === 'up' ? '▲' : (item.direction === 'down' ? '▼' : '—');
+    const changeText = item.direction === 'flat'
+      ? 'No change'
+      : `${arrow} ${Math.abs(item.percent_change)}%`;
+
+    return `
+      <div class="trend-item">
+        <div class="trend-left">
+          <div class="trend-cat">${getCategoryIcon(item.category)} ${item.category}</div>
+          <div class="trend-figures">₹${item.current_month.toFixed(0)} this month · ₹${item.previous_month.toFixed(0)} last month</div>
+        </div>
+        <div class="trend-change ${item.direction}">${changeText}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+loadSummary();
+loadReceipts();
+loadBudget();
+loadCategoryStatus();
+loadMonthlyComparison();
+</script>
+</body>
+</html>

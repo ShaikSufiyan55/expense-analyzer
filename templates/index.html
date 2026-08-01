@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Expense Tracker — Smart Receipt Analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e17;
+    --bg-2: #0d1320;
+    --glass: rgba(255,255,255,0.045);
+    --glass-border: rgba(255,255,255,0.09);
+    --glass-hi: rgba(255,255,255,0.09);
+    --text: #eef1f7;
+    --muted: #8a93a6;
+    --teal: #5eead4;
+    --violet: #a78bfa;
+    --amber: #fbbf24;
+    --danger: #f87171;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
+  }
+
+  .ambient {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(70px);
+    opacity: 0.35;
+    will-change: transform;
+  }
+  .blob-1 {
+    width: 480px; height: 480px;
+    background: radial-gradient(circle, var(--teal), transparent 70%);
+    top: -120px; left: -100px;
+    animation: drift1 22s ease-in-out infinite;
+  }
+  .blob-2 {
+    width: 520px; height: 520px;
+    background: radial-gradient(circle, var(--violet), transparent 70%);
+    bottom: -160px; right: -120px;
+    animation: drift2 26s ease-in-out infinite;
+  }
+  .blob-3 {
+    width: 320px; height: 320px;
+    background: radial-gradient(circle, var(--amber), transparent 70%);
+    top: 40%; left: 50%;
+    opacity: 0.18;
+    animation: drift3 30s ease-in-out infinite;
+  }
+  @keyframes drift1 {
+    0%, 100% { transform: translate(0,0) scale(1); }
+    50% { transform: translate(60px, 80px) scale(1.15); }
+  }
+  @keyframes drift2 {
+    0%, 100% { transform: translate(0,0) scale(1); }
+    50% { transform: translate(-70px, -50px) scale(1.1); }
+  }
+  @keyframes drift3 {
+    0%, 100% { transform: translate(-50%,-50%) scale(1); }
+    50% { transform: translate(-40%,-60%) scale(1.25); }
+  }
+  .noise {
+    position: fixed; inset: 0; z-index: 1; pointer-events: none;
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .container {
+    position: relative;
+    z-index: 2;
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 56px 24px 80px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 6px;
+    opacity: 0;
+    animation: riseIn 0.7s cubic-bezier(.2,.8,.2,1) 0.05s forwards;
+  }
+  .logo-mark {
+    width: 38px; height: 38px;
+    position: relative;
+  }
+  .logo-mark svg { width: 100%; height: 100%; display: block; }
+  .logo-mark .scan-line {
+    stroke-dasharray: 60;
+    stroke-dashoffset: 60;
+    animation: scanReveal 1.8s ease-in-out 0.4s infinite;
+  }
+  @keyframes scanReveal {
+    0% { stroke-dashoffset: 60; opacity: 0; }
+    15% { opacity: 1; }
+    50% { stroke-dashoffset: 0; opacity: 1; }
+    85% { opacity: 1; }
+    100% { stroke-dashoffset: -60; opacity: 0; }
+  }
+  .brand-name {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 21px;
+    letter-spacing: -0.01em;
+  }
+  .brand-name span { color: var(--teal); }
+
+  header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  header h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: clamp(28px, 5vw, 38px);
+    line-height: 1.15;
+    margin: 0 0 12px;
+    letter-spacing: -0.02em;
+    opacity: 0;
+    animation: riseIn 0.7s cubic-bezier(.2,.8,.2,1) 0.15s forwards;
+  }
+  header h1 .grad {
+    background: linear-gradient(100deg, var(--teal), var(--violet));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  header p {
+    color: var(--muted);
+    font-size: 15px;
+    margin: 0;
+    opacity: 0;
+    animation: riseIn 0.7s cubic-bezier(.2,.8,.2,1) 0.25s forwards;
+  }
+
+  @keyframes riseIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  nav.tabs {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 36px;
+    opacity: 0;
+    animation: riseIn 0.7s cubic-bezier(.2,.8,.2,1) 0.3s forwards;
+  }
+  nav.tabs a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 13.5px;
+    font-weight: 500;
+    padding: 8px 16px;
+    border-radius: 100px;
+    transition: color 0.2s, background 0.2s;
+  }
+  nav.tabs a.active {
+    color: var(--text);
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+  }
+  nav.tabs a:hover:not(.active) { color: var(--text); }
+  nav.tabs a.logout-link { margin-left: 8px; color: var(--danger); opacity: 0.8; }
+  nav.tabs a.logout-link:hover { opacity: 1; }
+
+  .glass-panel {
+    position: relative;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 22px;
+    padding: 32px;
+    backdrop-filter: blur(24px) saturate(140%);
+    -webkit-backdrop-filter: blur(24px) saturate(140%);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.06) inset,
+      0 30px 60px -30px rgba(0,0,0,0.6);
+    opacity: 0;
+    animation: riseIn 0.8s cubic-bezier(.2,.8,.2,1) 0.4s forwards;
+    overflow: hidden;
+  }
+  .glass-panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--glass-hi), transparent);
+  }
+
+  .drop-zone {
+    border: 1.5px dashed var(--glass-border);
+    border-radius: 16px;
+    padding: 44px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.25s, background 0.25s, transform 0.2s;
+    position: relative;
+  }
+  .drop-zone:hover {
+    border-color: var(--teal);
+    background: rgba(94, 234, 212, 0.04);
+  }
+  .drop-zone.dragover {
+    border-color: var(--violet);
+    background: rgba(167, 139, 250, 0.06);
+    transform: scale(1.01);
+  }
+  .drop-zone .icon-wrap {
+    width: 52px; height: 52px;
+    margin: 0 auto 14px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(94,234,212,0.15), rgba(167,139,250,0.15));
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.3s;
+  }
+  .drop-zone:hover .icon-wrap { transform: translateY(-3px); }
+  .drop-zone .icon-wrap svg { width: 22px; height: 22px; stroke: var(--teal); }
+  .drop-zone p.main-txt {
+    color: var(--text);
+    margin: 0 0 4px;
+    font-size: 14.5px;
+    font-weight: 500;
+  }
+  .drop-zone p.sub-txt {
+    color: var(--muted);
+    margin: 0;
+    font-size: 12.5px;
+  }
+  #fileInput { display: none; }
+
+  .preview-wrap {
+    position: relative;
+    display: none;
+    margin-top: 18px;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid var(--glass-border);
+  }
+  .preview-wrap img {
+    width: 100%;
+    max-height: 220px;
+    object-fit: cover;
+    display: block;
+  }
+  .scan-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 100%;
+    pointer-events: none;
+    display: none;
+    overflow: hidden;
+  }
+  .scan-overlay.active { display: block; }
+  .scan-sweep {
+    position: absolute;
+    left: 0; right: 0;
+    height: 40%;
+    background: linear-gradient(180deg, transparent, rgba(94,234,212,0.35), transparent);
+    animation: sweep 1.6s linear infinite;
+  }
+  @keyframes sweep {
+    0% { top: -40%; }
+    100% { top: 100%; }
+  }
+  .scan-overlay::after {
+    content: '';
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(rgba(94,234,212,0.06) 1px, transparent 1px) 0 0/100% 8px;
+  }
+
+  button.submit-btn {
+    width: 100%;
+    margin-top: 22px;
+    padding: 14px;
+    border: none;
+    border-radius: 14px;
+    background: linear-gradient(100deg, var(--teal), var(--violet));
+    color: #0a0e17;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.25s;
+    box-shadow: 0 10px 30px -10px rgba(94,234,212,0.35);
+  }
+  button.submit-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 36px -10px rgba(167,139,250,0.45);
+  }
+  button.submit-btn:active:not(:disabled) { transform: translateY(0); }
+  button.submit-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  .loading-row {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 16px;
+    color: var(--muted);
+    font-size: 13.5px;
+  }
+  .loading-row.show { display: flex; }
+  .spinner {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    border: 2px solid var(--glass-border);
+    border-top-color: var(--teal);
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #result {
+    margin-top: 22px;
+    padding: 0;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height 0.5s cubic-bezier(.2,.8,.2,1), opacity 0.4s, padding 0.4s;
+  }
+  #result.show {
+    max-height: 400px;
+    opacity: 1;
+    padding: 24px;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 18px;
+    backdrop-filter: blur(20px);
+  }
+  .result-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 11px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    font-size: 14px;
+    opacity: 0;
+    animation: rowIn 0.4s ease forwards;
+  }
+  .result-row:nth-child(1) { animation-delay: 0.05s; }
+  .result-row:nth-child(2) { animation-delay: 0.12s; }
+  .result-row:nth-child(3) { animation-delay: 0.19s; }
+  .result-row:nth-child(4) { animation-delay: 0.26s; }
+  .result-row:last-child { border-bottom: none; }
+  @keyframes rowIn {
+    from { opacity: 0; transform: translateX(-6px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  .result-row .label { color: var(--muted); font-size: 13px; }
+  .result-row .value { font-weight: 600; font-family: 'Space Grotesk', sans-serif; }
+  .badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 100px;
+    background: linear-gradient(100deg, rgba(94,234,212,0.18), rgba(167,139,250,0.18));
+    color: var(--teal);
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+  }
+  .review-flag {
+    color: var(--amber);
+    font-size: 12.5px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed rgba(255,255,255,0.08);
+  }
+  .error-text { color: var(--danger); font-size: 13.5px; }
+
+  footer {
+    text-align: center;
+    margin-top: 40px;
+    color: var(--muted);
+    font-size: 12px;
+    opacity: 0;
+    animation: riseIn 0.7s ease 0.5s forwards;
+  }
+</style>
+</head>
+<body>
+
+<div class="ambient">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+</div>
+<div class="noise"></div>
+
+<div class="container">
+
+  <div class="brand">
+    <div class="logo-mark">
+      <svg viewBox="0 0 40 40" fill="none">
+        <rect x="9" y="5" width="22" height="30" rx="3" stroke="url(#g1)" stroke-width="2"/>
+        <path d="M13 13H27M13 19H27M13 25H21" stroke="url(#g1)" stroke-width="2" stroke-linecap="round"/>
+        <line class="scan-line" x1="9" y1="20" x2="31" y2="20" stroke="#5eead4" stroke-width="2.5" stroke-linecap="round"/>
+        <defs>
+          <linearGradient id="g1" x1="9" y1="5" x2="31" y2="35">
+            <stop stop-color="#5eead4"/>
+            <stop offset="1" stop-color="#a78bfa"/>
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+    <div class="brand-name">Expense Tracker<span>.</span></div>
+  </div>
+
+  <header>
+    <h1>Turn any receipt into<br><span class="grad">structured insight</span></h1>
+    <p>Hi {{ user_name }} — upload a photo and Expense Tracker reads, parses, and categorizes it instantly</p>
+  </header>
+
+  <nav class="tabs">
+    <a href="/" class="active">Upload</a>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/gallery">Gallery</a>
+    <a href="/logout" class="logout-link">Logout</a>
+  </nav>
+
+  <div class="glass-panel">
+    <div class="drop-zone" id="dropZone">
+      <div class="icon-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 16V4M12 4L7 9M12 4l5 5"/>
+          <path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3"/>
+        </svg>
+      </div>
+      <p class="main-txt">Click to choose a receipt image, or drag it here</p>
+      <p class="sub-txt">JPG or PNG, up to 5MB</p>
+    </div>
+    <input type="file" id="fileInput" accept=".jpg,.jpeg,.png">
+
+    <div class="preview-wrap" id="previewWrap">
+      <img id="preview" alt="Receipt preview">
+      <div class="scan-overlay" id="scanOverlay">
+        <div class="scan-sweep"></div>
+      </div>
+    </div>
+
+    <button class="submit-btn" id="submitBtn" disabled>Analyze Receipt</button>
+    <div class="loading-row" id="loadingRow">
+      <div class="spinner"></div>
+      <span>Reading your receipt…</span>
+    </div>
+  </div>
+
+  <div id="result"></div>
+
+  <footer>Built with Flask, MongoDB &amp; Tesseract OCR</footer>
+</div>
+
+<script>
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+  const previewWrap = document.getElementById('previewWrap');
+  const preview = document.getElementById('preview');
+  const scanOverlay = document.getElementById('scanOverlay');
+  const submitBtn = document.getElementById('submitBtn');
+  const resultDiv = document.getElementById('result');
+  const loadingRow = document.getElementById('loadingRow');
+  let selectedFile = null;
+
+  const CATEGORY_ICONS = {
+    "Food & Dining": "🍔", "Transport": "🚗", "Groceries": "🍎", "Shopping": "🛍️",
+    "Utilities": "💡", "Healthcare": "🩺", "Entertainment": "🎬", "Uncategorized": "📦"
+  };
+  function getCategoryIcon(cat) { return CATEGORY_ICONS[cat] || "📦"; }
+
+  dropZone.addEventListener('click', () => fileInput.click());
+
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('dragover');
+  });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  });
+
+  fileInput.addEventListener('change', (e) => {
+    if (e.target.files.length) handleFile(e.target.files[0]);
+  });
+
+  function handleFile(file) {
+    selectedFile = file;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      preview.src = e.target.result;
+      previewWrap.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+    submitBtn.disabled = false;
+    resultDiv.classList.remove('show');
+    resultDiv.innerHTML = '';
+  }
+
+  submitBtn.addEventListener('click', async () => {
+    if (!selectedFile) return;
+
+    submitBtn.disabled = true;
+    loadingRow.classList.add('show');
+    scanOverlay.classList.add('active');
+    resultDiv.classList.remove('show');
+
+    const formData = new FormData();
+    formData.append('receipt_image', selectedFile);
+
+    try {
+      const res = await fetch('/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+
+      loadingRow.classList.remove('show');
+      scanOverlay.classList.remove('active');
+      submitBtn.disabled = false;
+
+      if (data.error) {
+        resultDiv.innerHTML = `<p class="error-text">${data.error}</p>`;
+      } else {
+        const d = data.data;
+        resultDiv.innerHTML = `
+          <div class="result-row"><span class="label">Merchant</span><span class="value">${d.merchant || '—'}</span></div>
+          <div class="result-row"><span class="label">Amount</span><span class="value">${d.amount ? '₹' + d.amount.toFixed(2) : '—'}</span></div>
+          <div class="result-row"><span class="label">Date</span><span class="value">${d.date || '—'}</span></div>
+          <div class="result-row"><span class="label">Category</span><span class="badge">${getCategoryIcon(d.category)} ${d.category}</span></div>
+          ${d.needs_review ? '<p class="review-flag">⚠ Some fields weren\'t fully clear — visit the dashboard to correct them.</p>' : ''}
+        `;
+      }
+      resultDiv.classList.add('show');
+    } catch (err) {
+      loadingRow.classList.remove('show');
+      scanOverlay.classList.remove('active');
+      submitBtn.disabled = false;
+      resultDiv.innerHTML = `<p class="error-text">Upload failed: ${err.message}</p>`;
+      resultDiv.classList.add('show');
+    }
+  });
+</script>
+</body>
+</html>
